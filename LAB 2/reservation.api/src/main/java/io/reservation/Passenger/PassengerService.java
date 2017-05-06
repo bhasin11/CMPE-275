@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import io.reservation.Flight.Flight;
-import io.reservation.Flight.FlightRepository;
 import io.reservation.Plane.Plane;
 import io.reservation.Reservation.Reservation;
 import io.reservation.Reservation.ReservationRepository;
@@ -73,11 +72,9 @@ public class PassengerService {
 				return  new ResponseEntity<>(XML.toString(new JSONObject(passengerToJSONString(passenger))),HttpStatus.OK);
 		}
 		else{
-			generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + id +" does not exist" );
-			if(responseType.equals("json")) 
-				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + id +" does not exist") ,HttpStatus.NOT_FOUND);
-			else
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + id +" does not exist"))), HttpStatus.NOT_FOUND);
+			//generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + id +" does not exist" );
+			return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " 
+			+ id +" does not exist"), HttpStatus.NOT_FOUND);
 		}
 	}
 	
@@ -109,14 +106,18 @@ public class PassengerService {
 		JSONObject json = new JSONObject();
 
 		if(passenger == null){
-			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger was not updated" ),HttpStatus.BAD_REQUEST);
+			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", 
+					"Sorry, the requested passenger was not updated" ),HttpStatus.BAD_REQUEST);
 		}
 		System.out.println("Updating User");
 
 		try{
 			Passenger tempPassenger=passengerRepository.findByPhone(phone);
-			if(tempPassenger!=null && tempPassenger.getId()!=id)
-				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the passenger with phone number "+tempPassenger.getPhone()+" already exists in the DB!" ),HttpStatus.NOT_FOUND);
+			if(tempPassenger != null && tempPassenger.getId() != id)
+				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", 
+						"Sorry, the passenger with phone number "+tempPassenger.getPhone()
+						+" already exists in the DB!" ),HttpStatus.NOT_FOUND);
+			
 			passenger.setAge(Integer.parseInt(age));
 			passenger.setFirstname(firstname);
 			passenger.setGender(gender);
@@ -129,6 +130,7 @@ public class PassengerService {
 			json.put("age", age);
 			json.put("gender", gender);
 			json.put("phone", phone);
+			
 		} catch (JSONException e) {
 			//return generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger was not updated" );
 			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger was not updated" ),HttpStatus.NOT_FOUND);

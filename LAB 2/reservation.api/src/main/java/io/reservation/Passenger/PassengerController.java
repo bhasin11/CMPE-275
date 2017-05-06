@@ -1,7 +1,6 @@
 package io.reservation.Passenger;
 
-import org.json.JSONObject;
-import org.json.XML;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -12,39 +11,23 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.reservation.Reservation.ReservationService;
-
 @RestController
 public class PassengerController {
 
 	@Autowired
 	private PassengerService passengerService;
 	
-	@Autowired
-	private ReservationService reservationService;
-	
 	@RequestMapping(value="/passenger/{id}", method=RequestMethod.GET, produces={MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
 	public ResponseEntity<?> getPassenger(@PathVariable String id, 
-			@RequestParam(value = "json", required = false) String json, @RequestParam(value = "xml", required=false) String xml){
-		// @RequestParam to get a particular parameter value and 
-		// store it in type
-		System.out.println("inside getPassenger("+ id  +")");
-		if(json != null && json.equals("true")){ // ?json=true
-			String responseType="json";
-			//String a = passengerService.getPassenger(id, responseType);
-			return passengerService.getPassenger(id, responseType);
-			//return  new ResponseEntity<>(a,HttpStatus.OK);
+			@RequestParam(value = "xml", required=false) String xml){
+		
+		String responseType="json";
+		
+		if(xml != null && xml.equals("true")){ // ?xml=true
+			responseType="xml";
 		}
-		else if(xml != null && xml.equals("true")){ // ?xml=true
-			String responseType="xml";
-			//String a = passengerService.getPassenger(id, responseType); 
-			//JSONObject jObject  = new JSONObject(a); // json
-			return passengerService.getPassenger(id, responseType); 
-			//return  new ResponseEntity<>(XML.toString(jObject),HttpStatus.OK);
-		}
-		return (new ResponseEntity<>("{\"BadRequest\":{"
-							+ "\"code\":\"404\","
-						+ "\"msg\":\"Please provide json=true or xml=true\"}}",HttpStatus.NOT_FOUND));
+		
+		return passengerService.getPassenger(id, responseType);
 	}
 	
 	@RequestMapping(value="/passenger", method=RequestMethod.POST, produces=MediaType.APPLICATION_JSON_VALUE)

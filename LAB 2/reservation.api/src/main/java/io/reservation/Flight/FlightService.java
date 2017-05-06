@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import io.reservation.Passenger.Passenger;
+import io.reservation.Passenger.PassengerRepository;
 import io.reservation.Plane.Plane;
 import io.reservation.Reservation.Reservation;
 import io.reservation.Reservation.ReservationRepository;
@@ -27,30 +28,47 @@ public class FlightService {
 	private FlightRepository flightRepository;
 	@Autowired
 	private ReservationRepository reservationRepository;
-
+	@Autowired
+	private PassengerRepository passengerRepository;
 	
 	public ResponseEntity<?> addFlight(String flightNumber, int price, String from, String to, String departureTime,
 			String arrivalTime, String description, int capacity, String model, int yearOfManufacture,
 			String manufacturer) {
-		System.out.println("inside addFlight()");
 		
-		//DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");  
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH");
 		Date departure = null, arrival = null;
 		try {
-			departure = dateFormat.parse(departureTime);
-			arrival = dateFormat.parse(arrivalTime);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
+			System.out.println("inside addFlight()");
+			if(flightRepository.findByNumber(flightNumber)!=null)
+				return updateFlight(flightNumber, price, from, to, departureTime, arrivalTime, 
+						description, capacity, model, yearOfManufacture, manufacturer);
+			//DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");  
+			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH");
+			
+				departure = dateFormat.parse(departureTime);
+				arrival = dateFormat.parse(arrivalTime);
+				if((departure).compareTo(arrival)>0){
+					return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", 
+							"Sorry, the departure time cannot be greater than the arrival time"), 
+							HttpStatus.NOT_FOUND);
+				}
+		
 
-		System.out.println("New Plane");
+			
+			Plane plane = new Plane(capacity, model, manufacturer, yearOfManufacture);
+			plane.setNumber(flightNumber);
+			Flight flight = new Flight(flightNumber, price, from, to, departure, arrival, description, new ArrayList<Passenger>(), plane);
+			
+			flightRepository.save(flight);
 		
-		Plane plane = new Plane(capacity, model, manufacturer, yearOfManufacture);
-		plane.setNumber(flightNumber);
-		Flight flight = new Flight(flightNumber, price, from, to, departure, arrival, description, new ArrayList<Passenger>(), plane);
-		
-		flightRepository.save(flight);
+		} catch (Exception e) {
+			System.out.println("EXCEPTION########");
+			
+			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", 
+					"Sorry, there was some problem."), 
+					HttpStatus.NOT_FOUND);
+			
+//			e.printStackTrace();
+		}
 		
 		return getFlight(flightNumber, "xml");
 	}
@@ -91,7 +109,8 @@ public class FlightService {
 			if(responseType.equals("json"))
 				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with number " + flightNumber +" does not exist") ,HttpStatus.NOT_FOUND);
 			else
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with number " + flightNumber +" does not exist"))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with number " 
+			+ flightNumber +" does not exist"), HttpStatus.NOT_FOUND);
 		}
 	}
 
@@ -111,14 +130,14 @@ public class FlightService {
 				for(Reservation reservation: reservations){
 					if(reservation.getFlights().contains(flight)){
 						//System.out.println(reser);
-						return generateErrorMessage("Response", "400", "Flight "+ flight.getNumber()+" cannot be deleted as it is being used in reservation "+ reservation.getId());
+						return generateErrorMessage("BadRequest", "400", "Flight "+ flight.getNumber()+" cannot be deleted as it is being used in reservation "+ reservation.getId());
 					}
 				}
-				return generateErrorMessage("Response", "400", "There was some error deleting flight.");
+				return generateErrorMessage("BadRequest", "400", "Flight cannot be romved, their are some passenger(s) who have booked this flight");
 			}
 			return generateErrorMessage("Response", "200", "Flight with number " + flightNumber + " is deleted successfully");
 		}
-		return generateErrorMessage("Response", "404", "Flight with number " + flightNumber + " not found");
+		return generateErrorMessage("BadRequest", "404", "Flight with number " + flightNumber + " not found");
 	}
 
 	/*public String updateFlight(String flightNumber, int price, String from, String to, String departureTime,
@@ -139,25 +158,74 @@ public class FlightService {
 		}
 		return generateErrorMessage("Response", "404", "Flight with number " + flightNumber + " not found");
 	}*/
-	
+	public Flight checkFlightUpdateForPassengers(List<Flight> passengerFlights, Flight updatedFlight){
+		for(Flight flight: passengerFlights){
+			if(flight.getNumber().equals(updatedFlight.getNumber()))
+				continue;
+			Date currentFlightDepartureDate=flight.getDepartureTime();
+			Date currentFlightArrivalDate=flight.getArrivalTime();
+			Date min=updatedFlight.getDepartureTime();
+			Date max=updatedFlight.getArrivalTime();
+			if((currentFlightArrivalDate.compareTo(min)>=0 && currentFlightArrivalDate.compareTo(max)<=0) || (currentFlightDepartureDate.compareTo(min)>=0 && currentFlightDepartureDate.compareTo(max)<=0)){
+				System.out.println("I am failing update flight here checkCurrentreservationFlightsTimings");
+				//List<Flight> flightList= new ArrayList<Flight>();
+				return flight;
+			}
+		}
+		return null;
+	}
 	public ResponseEntity<?> updateFlight(String flightNumber, int price, String from, String to, String departureTime,
 			String arrivalTime, String description, int capacity, String model, int yearOfManufacture,
 			String manufacturer) {
 		System.out.println("inside updateFlight()");
-		JSONObject json = new JSONObject();
 		Flight flight = flightRepository.findOne(flightNumber);
+		System.out.println("CHECKK MEEE:"+flight.getNumber());
 		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH");
 		Date departure = null, arrival = null;
 		try {
 			departure = dateFormat.parse(departureTime);
 			arrival = dateFormat.parse(arrivalTime);
+			if(departure.compareTo(arrival)>=0)
+				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the departure time cannot be greater than the arrival time") ,HttpStatus.NOT_FOUND);
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
-		if(departure.compareTo(flight.getDepartureTime())!=0 || arrival.compareTo(flight.getArrivalTime())!=0){
-		//	checkTimingsWithExistingFlightsForAllPassenters(departure, arrival);
-		}
 		if(flight != null){
+			if(departure.compareTo(flight.getDepartureTime())!=0 || arrival.compareTo(flight.getArrivalTime())!=0){
+			//	checkTimingsWithExistingFlightsForAllPassenters(departure, arrival);
+				List<Passenger> passengers = (List<Passenger>) passengerRepository.findAll();
+				for(Passenger passenger : passengers){
+					List<Reservation> reservations=passenger.getReservation();
+					List<Flight> currentPassengerFlights=new ArrayList<Flight>();
+					for(Reservation reservation:reservations){
+						for(Flight currentPassegnerFlight:reservation.getFlights()){
+							currentPassengerFlights.add(currentPassegnerFlight);
+						}
+					}
+					//System.out.println(passengers.size());
+					//System.out.println(passenger.getGenId()+"  "+passenger.getFirstname());
+					//System.out.println(currentPassengerFlights.size());
+				//	System.out.println(passenger.());
+					for(Flight currentFlight: currentPassengerFlights){
+						if(currentFlight.getNumber().equals(flightNumber)){
+							System.out.println("in .containts");
+							flight.setDepartureTime(departure);
+							flight.setArrivalTime(arrival);
+							Flight returnedFlight=checkFlightUpdateForPassengers(currentPassengerFlights,flight);
+							if(returnedFlight!=null){
+								return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Flight with number " + flightNumber + " cannot be updated as it overlaps with the flight "+returnedFlight.getNumber()+" for passenger with id:"+ passenger.getGenId()),HttpStatus.NOT_FOUND);
+							}
+							System.out.println("after .containts");
+						}
+					}
+				}
+			}
+			System.out.println("NO CONFLICT");
+
+		//flightRepository.save(flight);
+		//return new ResponseEntity<>(XML.toString(flightToJSONString(flight)),HttpStatus.OK);
+		//	List<Reservation> reservations= (List<Reservation>)
+		
 			try{
 				//flightRepository.delete(flight);
 				flight.setPrice(price);
@@ -171,21 +239,16 @@ public class FlightService {
 				flight.getPlane().setModel(model);
 				flight.getPlane().setYearOfManufacture(yearOfManufacture);;
 				flightRepository.save(flight);
-				return getFlight(flightNumber, "xml");
 
 			}
 			catch(Exception e){
 				System.out.println("inside deleteFlight() catch");
-				return  new ResponseEntity<>(generateErrorMessage("Response", "400", "There was some error deleting flight." ),HttpStatus.NOT_FOUND);
+				return  new ResponseEntity<>(generateErrorMessage("BadRequest", "400", "There was some error deleting flight." ),HttpStatus.NOT_FOUND);
 			}
 		}
-		return  new ResponseEntity<>(generateErrorMessage("Response", "404", "Flight with number " + flightNumber + " not found"),HttpStatus.NOT_FOUND);
-
+		return getFlight(flightNumber, "xml");
 	}
-	private void checkTimingsWithExistingFlightsForAllPassenters(Date departure, Date arrival) {
-		// TODO Auto-generated method stub
-		
-	}
+	
 
 	public String generateErrorMessage(String header, String code, String message){
 		JSONObject result = new JSONObject();

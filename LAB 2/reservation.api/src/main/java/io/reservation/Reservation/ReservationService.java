@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import io.reservation.Flight.Flight;
+import io.reservation.Flight.FlightRepository;
 import io.reservation.Passenger.Passenger;
 import io.reservation.Passenger.PassengerRepository;
 import io.reservation.Plane.Plane;
@@ -32,20 +33,24 @@ public class ReservationService {
 		
 		if(passenger != null){
 			System.out.println("inside addReservation() if");
+			
 			List<Flight> currentReservationFlights=checkCurrentreservationFlightsTimings(passengerId, flightList);
 			List<Flight> passengerFlights=checkWithExistingPassengerReservations(passengerId, flightList);
 			if(currentReservationFlights!=null){
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "+currentReservationFlights.get(0) +" and "+ currentReservationFlights.get(1)+"overlap" ))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "
+			+currentReservationFlights.get(0).getNumber() +" and "+ currentReservationFlights.get(1).getNumber()+" overlap" ), HttpStatus.NOT_FOUND);
 			}
 			if(passengerFlights!=null){
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "+passengerFlights.get(0) +" and "+ passengerFlights.get(1)+"overlap" ))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "
+			+passengerFlights.get(0).getNumber() +" and "+ passengerFlights.get(1).getNumber()+" overlap" ), HttpStatus.NOT_FOUND);
 			}
 			Flight fullFlight = checkSeats(flightList);
 			if(fullFlight != null){
 				//return generateErrorMessage("BadRequest", "404", 
 				//		"Sorry, the requested flight with id " + fullFlight.getSeatsLeft() +" is full");
 				//return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with id " + fullFlight.getSeatsLeft() +" is full" ),HttpStatus.NOT_FOUND);
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with id " + fullFlight.getSeatsLeft() +" is full" ))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested flight with id " 
+				+ fullFlight.getSeatsLeft() +" is full" ), HttpStatus.NOT_FOUND);
 
 			}
 			decreaseFlightSeats(flightList);
@@ -58,26 +63,18 @@ public class ReservationService {
 			System.out.println("inside addReservation() if 1");
 			reservationRepository.save(reservation);
 			System.out.println("inside addReservation() if 2");
-			//return reservationToJSONString(reservation);
-			//return  new ResponseEntity<>(reservationToJSONString(reservation),HttpStatus.OK);
+			
 			return  new ResponseEntity<>(XML.toString(new JSONObject(reservationToJSONString(reservation))),HttpStatus.OK);
 		}
 		else{
 			System.out.println("inside addReservation() else");
-			//return generateErrorMessage("BadRequest", "404", 
-				//	"Sorry, the requested passenger with id " + passengerId +" does not exist");
-			//return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + passengerId +" does not exist" ),HttpStatus.NOT_FOUND);
-			//return  new ResponseEntity<>(XML.toString(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + passengerId +" does not exist" ) ,HttpStatus.NOT_FOUND);
-			return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + passengerId +" does not exist" ))), HttpStatus.NOT_FOUND);
+			
+			return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested passenger with id " + 
+			passengerId +" does not exist" ), HttpStatus.NOT_FOUND);
 
 		}
 	}
 	
-//	private void checkFlightTimings(List<Flight> flightList, ) {
-		// TODO Auto-generated method stub
-		
-//}
-
 	private List<Flight> checkCurrentreservationFlightsTimings(int passengerId, List<Flight> flightList) {
 		// TODO Auto-generated method stub
 		for(int i=0;i<flightList.size();i++){
@@ -98,6 +95,7 @@ public class ReservationService {
 		return null;
 		
 	}
+	
 	private List<Flight> checkWithExistingPassengerReservations(int passengerId, List<Flight> flightList){
 		System.out.println("");
 		List<Reservation> reservations=passengerRepository.findByGenId(passengerId).getReservation();
@@ -109,6 +107,12 @@ public class ReservationService {
 		}
 		for(int i=0;i<flightList.size();i++){
 			for(int j=0;j<currentPassengerFlights.size();j++){
+				try{
+					flightList.get(i);
+				}
+				catch(Exception e){
+					//return new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, one of the flights does not exist" ), HttpStatus.NOT_FOUND);					
+				}
 				Date currentFlightDepartureDate=flightList.get(i).getDepartureTime();
 				Date currentFlightArrivalDate=flightList.get(i).getArrivalTime();
 				Date min=currentPassengerFlights.get(j).getDepartureTime();
@@ -118,7 +122,7 @@ public class ReservationService {
 					//return false;
 					List<Flight> list= new ArrayList<Flight>();
 					list.add(flightList.get(i));
-					list.add(flightList.get(j));
+					list.add(currentPassengerFlights.get(j));
 					return list;
 				}
 			}
@@ -134,7 +138,8 @@ public class ReservationService {
 			System.out.println("inside getReservation() if");
 
 			//return generateErrorMessage("BadRequest", "404", "Sorry, the requested reservation with number " + number +" does not exist");
-			return  new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the requested reservation with number " + number +" does not exist"))),HttpStatus.NOT_FOUND);
+			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", "Sorry, the requested reservation with number " + number 
+					+" does not exist"),HttpStatus.NOT_FOUND);
 
 		}
 		else{
@@ -258,8 +263,6 @@ public class ReservationService {
 		}
 		return planeJSON;
 	}
-
-	
 	
 	public ResponseEntity<?> deleteReservation(int number) {
 		System.out.println("inside deleteReservation()");
@@ -287,20 +290,29 @@ public class ReservationService {
 		}
 	}
 
-	public void updateReservatonRemoveFlights(int number, List<Flight> removeFlights) {
+	public ResponseEntity<?> updateReservatonRemoveFlights(int number, List<Flight> removeFlights) {
 		// TODO Auto-generated method stub
 		Reservation reservation = reservationRepository.findOne(number);
+		
+		if(reservation == null){
+			return  new ResponseEntity<>(generateErrorMessage("BadRequest", "404", 
+					"Sorry, the requested reservation with number " 
+				    + number + " does not exist"), HttpStatus.NOT_FOUND);
+		}
+		
 		for(Flight flight: removeFlights)
 			reservation.getFlights().remove(flight);
 		reservationRepository.save(reservation);
 		
+		return null;
 	}
 
 	public ResponseEntity<?> updateReservationAddFlights(int number, List<Flight> flightsAdded) {
 		// TODO Auto-generated method stub
 		Reservation reservation = reservationRepository.findOne(number);
 		int passengerId=reservation.getPassenger().getGenId();
-		if(checkCurrentreservationFlightsTimings(passengerId, flightsAdded)!=null && checkWithExistingPassengerReservations(passengerId, flightsAdded)!=null){
+		if(checkCurrentreservationFlightsTimings(passengerId, flightsAdded)==null && 
+				checkWithExistingPassengerReservations(passengerId, flightsAdded)==null){
 			for(Flight flight:flightsAdded)
 				reservation.getFlights().add(flight);
 			reservationRepository.save(reservation);
@@ -310,13 +322,54 @@ public class ReservationService {
 			List<Flight> currentReservationFlights=checkCurrentreservationFlightsTimings(passengerId, flightsAdded);
 			List<Flight> passengerFlights=checkWithExistingPassengerReservations(passengerId, flightsAdded);
 			if(currentReservationFlights!=null){
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "+currentReservationFlights.get(0) +" and "+ currentReservationFlights.get(1)+"overlap" ))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", 
+						"Sorry, the timings of flights: "+currentReservationFlights.get(0).getNumber() 
+						+" and "+ currentReservationFlights.get(1).getNumber()+"overlap" ))), HttpStatus.NOT_FOUND);
 			}
 			if(passengerFlights!=null){
-				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", "Sorry, the timings of flights: "+passengerFlights.get(0) +" and "+ passengerFlights.get(1)+"overlap" ))), HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>(XML.toString(new JSONObject(generateErrorMessage("BadRequest", "404", 
+						"Sorry, the timings of flights: "+passengerFlights.get(0).getNumber() +" and "
+						+ passengerFlights.get(1).getNumber() + "overlap" ))), HttpStatus.NOT_FOUND);
 			}
 			return  new ResponseEntity<>(generateErrorMessage("Response", "404", "Time Overlap Constraint Violated"),HttpStatus.NOT_FOUND);
 
 		}
+	}
+
+	public ResponseEntity<?> findReservation(String passengerId, String from, String to, String flightNumber) {
+		
+		System.out.println("inside findReservation()");
+		
+		Iterable<Reservation> reservations = null;
+		int passengerID = 0;
+		
+		try{
+			passengerID = Integer.parseInt(passengerId);
+		}catch(Exception e){
+			return  new ResponseEntity<>(generateErrorMessage("Response", "404", 
+					"Please enter integer value for passenger number."), HttpStatus.NOT_FOUND);			
+		}
+		
+		System.out.println("passengerId "+passengerID);
+		System.out.println("from "+from);
+		System.out.println("to "+to);
+		System.out.println("flightNumber "+flightNumber);
+		
+		try{
+			reservations = reservationRepository.findAll();
+			
+			if(reservations == null){
+				System.out.println("No Reservations");
+			}
+			else{
+				System.out.println("Reservations");				
+			}
+			
+			System.out.println("Reservations Size ");
+		} catch(Exception e){
+			System.out.println("EXCEPTION#####");
+		}
+		
+		return null;
 	}
 }

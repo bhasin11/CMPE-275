@@ -1,5 +1,7 @@
 package io.reservation.Flight;
 
+import javax.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,27 +28,29 @@ public class FlightController {
 			@RequestParam("capacity") int capacity,
 			@RequestParam("model") String model,
 			@RequestParam("yearOfManufacture") int yearOfManufacture,
-			@RequestParam("manufacturer") String manufacturer						
-){	
+			@RequestParam("manufacturer") String manufacturer){
+		
+		System.out.println("addFlight()#################");
 		return flightService.addFlight(flightNumber, price, from, to, 
 				departureTime, arrivalTime, description, capacity,
 				model, yearOfManufacture, manufacturer);
 	}
 	
 	@RequestMapping(value = "/flight/{flightNumber}", method = RequestMethod.GET, produces=MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<?> getFlight(@PathVariable String flightNumber, @RequestParam(value="json", required=false) String json, @RequestParam(value="xml", required=false) String xml){
-		if(json != null && json.equals("true")){
-			System.out.println("Json"+json);
-			return flightService.getFlight(flightNumber, "json");
-			
+	public ResponseEntity<?> getFlight(
+			@PathVariable String flightNumber, 
+			@RequestParam(value="xml", required=false) String xml){
+		
+		String responseType = "json";
+		if(xml != null && xml.equals("true")){
+			responseType = "xml";
 		}
-		else if(xml != null && xml.equals("true")){
-			return flightService.getFlight(flightNumber, "xml");
-		}
-		else
-			return (new ResponseEntity<>("{\"BadRequest\":{"
-					+ "\"code\":\"404\","
-				+ "\"msg\":\"Please provide json=true or xml=true\"}}",HttpStatus.NOT_FOUND));
+		return flightService.getFlight(flightNumber, responseType);
+		
+		//else
+		//	return (new ResponseEntity<>("{\"BadRequest\":{"
+		//			+ "\"code\":\"404\","
+		//		+ "\"msg\":\"Please provide json=true or xml=true\"}}",HttpStatus.NOT_FOUND));
 			
 	}
 	
